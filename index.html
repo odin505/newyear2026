@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Liter:wght@400;700&display=swap" rel="stylesheet">
+  <title>New Year Canvas</title>
+  <style>
+    :root {
+      --color-bg: #f5f5f0;
+      --color-canvas: #ffffff;
+      --color-dark: #111111;
+      --color-gold: #f7d84a;
+      --color-red: #e33f2e;
+      --color-blue: #1a45b8;
+      --color-teal: #00a79d;
+      --color-brown: #7c4a21;
+    }
+
+    body {
+      margin: 0;
+      background: var(--color-bg);
+      overflow: hidden;
+      font-family: 'Liter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      background: var(--color-canvas);
+      touch-action: none;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    #ui {
+      position: fixed;
+      left: 50%;
+      bottom: 10px;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+      backdrop-filter: blur(8px);
+      max-width: 90vw;
+      justify-content: center;
+    }
+
+    .palette {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .color-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 150ms;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .color-dot:hover {
+      transform: scale(1.15);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .color-dot.active {
+      border-color: var(--color-dark);
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+    }
+
+    button {
+      padding: 8px 14px;
+      background: var(--color-dark);
+      color: var(--color-canvas);
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-weight: 600;
+      transition: all 150ms;
+    }
+
+    button:hover {
+      background: var(--color-blue);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    input {
+      flex: 1;
+      min-width: 120px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      font-size: 13px;
+      font-family: inherit;
+      transition: all 150ms;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--color-blue);
+      box-shadow: 0 0 8px rgba(26, 69, 184, 0.2);
+    }
+
+    @media (max-width: 600px) {
+      #ui {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+      }
+
+      input {
+        min-width: 100%;
+      }
+
+      button {
+        flex: 1;
+        min-width: 100px;
+      }
+
+      canvas {
+        width: 90vw !important;
+        height: auto !important;
+        top: 45%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="3000" height="4000"></canvas>
+
+  <div id="ui">
+    <div class="palette" id="colorPalette"></div>
+    <input id="nameInput" type="text" placeholder="Твоё имя" />
+    <button id="clearBtn">Очистить</button>
+    <button id="saveBtn">Отправить 🎁</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const W = 3000, H = 4000;
+    canvas.width = W;
+    canvas.height = H;
+
+    function fitCanvasToScreen() {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const viewRatio = vw / vh;
+      const canvasRatio = W / H;
+      if (viewRatio > canvasRatio) {
+        const h = vh;
+        const w = h * canvasRatio;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+      } else {
+        const w = vw;
+        const h = w / canvasRatio;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+      }
+    }
+    fitCanvasToScreen();
+    window.addEventListener('resize', fitCanvasToScreen);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    const palette = ['#dc2626', '#22c55e', '#fbbf24', '#1e293b', '#06b6d4', '#ec4899', '#ffffff'];
+    let currentColor = palette[0];
+
+    const paletteDiv = document.getElementById('colorPalette');
+    palette.forEach((color, index) => {
+      const dot = document.createElement('div');
+      dot.className = 'color-dot' + (index === 0 ? ' active' : '');
+      dot.style.background = color;
+      dot.dataset.color = color;
+      dot.addEventListener('click', () => {
+        document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+        dot.classList.add('active');
+        currentColor = color;
+      });
+      paletteDiv.appendChild(dot);
+    });
+
+    function pos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = W / rect.width;
+      const scaleY = H / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    let isDrawing = false, lastX = 0, lastY = 0;
+
+    function basquiatSpot(x, y) {
+      const steps = 34;
+      const radius = 20 + Math.random() * 50;
+      for (let i = 0; i < steps; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const r = radius * Math.sqrt(Math.random());
+        const px = x + Math.cos(ang) * r;
+        const py = y + Math.sin(ang) * r;
+        ctx.globalAlpha = 0.6 + Math.random() * 0.3;
+        ctx.fillStyle = currentColor;
+        ctx.beginPath();
+        ctx.arc(px, py, (3 + Math.random() * 6) * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function start(e) {
+      e.preventDefault();
+      isDrawing = true;
+      const p = pos(e);
+      lastX = p.x;
+      lastY = p.y;
+      basquiatSpot(p.x, p.y);
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      e.preventDefault();
+      const p = pos(e);
+      const segments = 20;
+      for (let i = 0; i < segments; i++) {
+        const t = i / segments;
+        const bx = lastX + (p.x - lastX) * t;
+        const by = lastY + (p.y - lastY) * t;
+        const jitter = 10;
+        const ox = (Math.random() - 0.5) * jitter;
+        const oy = (Math.random() - 0.5) * jitter;
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = (4 + Math.random() * 7) * 3;
+        ctx.globalAlpha = 0.7;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bx + ox, by + oy);
+        ctx.lineTo(bx + ox + (Math.random() - 0.5) * 9, by + oy + (Math.random() - 0.5) * 9);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 0.15;
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#000';
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      lastX = p.x;
+      lastY = p.y;
+    }
+
+    function end(e) {
+      e.preventDefault();
+      isDrawing = false;
+    }
+
+    canvas.addEventListener('pointerdown', start);
+    canvas.addEventListener('pointermove', draw);
+    canvas.addEventListener('pointerup', end);
+    canvas.addEventListener('pointerleave', end);
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      if (confirm('❄️ Очистить весь холст? Это действие не отменяется!')) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, W, H);
+      }
+    });
+
+    const wishes = [
+      'С Новым Годом! Пусть заказчики в новом 2026 году сразу присылают внятное ТЗ, а не «сделай как-нибудь красиво».',
+      'С Новым Годом! Желаю тебе правок не больше одной и только по делу.',
+      'С Новым Годом! Пусть слово «срочно» исчезнет из словаря твоих клиентов.',
+      'С Новым Годом! Чтобы макеты принимали с фразой «идеально, ничего менять не нужно».',
+      'С Новым Годом! Желаю проектов, которые не стыдно добавлять в портфолио.',
+      'С Новым Годом! Пусть клиент никогда не просит «поставить Comic Sans, он же весёлый».',
+      'С Новым Годом! Пусть Ctrl+Z никогда не подводит в самый ответственный момент.',
+      'С Новым Годом! Пусть Figma ни разу не выдает «Something went wrong».',
+      'С Новым Годом! Пусть правок будет меньше, чем артбордов.',
+      'С Новым Годом! Пусть твой стиль узнают без подписи.',
+      'С Новым Годом! Пусть любимые проекты приносят любимые суммы.',
+      'С Новым Годом! Пусть 2026 будет годом, когда ты работаешь с интересом, а отдыхаешь спокойно.'
+    ];
+
+    // Save canvas: send to bot as dataURL
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const nameInput = document.getElementById('nameInput').value.trim();
+      const name = nameInput || 'Дорогой друг';
+      const randomWish = wishes[Math.floor(Math.random() * wishes.length)];
+
+      const line1 = `${name},`;
+      const line2 = randomWish;
+
+      const corner = ctx.getImageData(0, 0, 300, 300).data;
+      let lum = 0;
+      for (let i = 0; i < corner.length; i += 4) {
+        lum += (corner[i] + corner[i + 1] + corner[i + 2]) / 3;
+      }
+      lum /= corner.length / 4;
+
+      ctx.save();
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = lum < 128 ? '#ffffff' : '#000000';
+
+      const maxWidth = W - 200;
+      const x = 100;
+      const y = H - 220;
+
+      ctx.font = '80px Liter, sans-serif';
+      ctx.fillText(line1, x, y, maxWidth);
+
+      ctx.font = '70px Liter, sans-serif';
+      ctx.fillText(line2, x, y + 90, maxWidth);
+
+      ctx.restore();
+
+      const dataUrl = canvas.toDataURL('image/png');
+
+      if (window.Telegram && window.Telegram.WebApp) {
+        Telegram.WebApp.sendData(dataUrl);
+        Telegram.WebApp.close();
+      } else {
+        const link = document.createElement('a');
+        link.download = 'new-year.png';
+        link.href = dataUrl;
+        link.click();
+      }
+    });
+  </script>
+</body>
+</html>

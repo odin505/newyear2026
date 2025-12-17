@@ -1,40 +1,115 @@
-const { Telegraf } = require('telegraf');
-const fs = require('fs');
-
-// вставь сюда токен бота
-const bot = new Telegraf(process.env.BOT_TOKEN);
-
-// /start — отправляем кнопку для открытия WebApp
-bot.start((ctx) => {
-  return ctx.reply(
-    'Нарисуй свою новогоднюю открытку 🎄',
-    {
-      reply_markup: {
-        keyboard: [[
-          {
-            text: 'Открыть рисовалку ✏️',
-            web_app: { url: 'https://ТВОЙ-ДОМЕН/index.html' }
-          }
-        ]],
-        resize_keyboard: true
-      }
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Рисовалка</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background: #f5f5f5;
+      font-family: sans-serif;
+      text-align: center;
     }
-  );
-});
+    canvas {
+      background: white;
+      border: 1px solid #ccc;
+      touch-action: none;
+    }
+    .buttons {
+      margin: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      margin: 5px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
 
-// обработка данных из WebApp
-bot.on('message', async (ctx) => {
-  const webData = ctx.message.web_app_data;
-  if (!webData) return;
+<h3>🎄 Нарисуй открытку</h3>
 
-  const dataUrl = webData.data; // "data:image/png;base64,...."
-  const base64 = dataUrl.split(',')[1];
-  const buffer = Buffer.from(base64, 'base64');
+<canvas id="canvas" width="300" height="400"></canvas>
 
-  await ctx.replyWithPhoto(
-    { source: buffer },
-    { caption: 'Твоя новогодняя открытка 🎄' }
-  );
-});
+<div class="buttons">
+  <button onclick="clearCanvas()">Очистить</button>
+  <button onclick="send()">Отправить</button>
+</div>
 
-bot.launch();
+<script>
+  const tg = window.Telegram.WebApp;
+  tg.expand();
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#000';
+
+  let drawing = false;
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches) {
+      return {
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top
+      };
+    }
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  });
+
+  canvas.addEventListener('mouseup', () => drawing = false);
+  canvas.addEventListener('mouseleave', () => drawing = false);
+
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  });
+
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  });
+
+  canvas.addEventListener('touchend', () => drawing = false);
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function send() {
+    const dataUrl = canvas.toDataURL('image/png');
+    tg.sendData(dataUrl);
+    tg.close();
+  }
+</script>
+
+</body>
+</html>
